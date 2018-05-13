@@ -8,7 +8,7 @@ namespace ResXChecker
 {
     class Checker
     {
-        internal static void PrintUnreferenced(string resx, string filePattern, string baseDir)
+        private static List<string> GetFiles(string filePattern, string baseDir)
         {
             if (string.IsNullOrWhiteSpace(filePattern))
             {
@@ -20,11 +20,14 @@ namespace ResXChecker
                 baseDir = System.IO.Directory.GetCurrentDirectory();
             }
 
-            var entries = fmdev.ResX.ResXFile.Read(resx);
-            entries = entries.OrderBy(e => e.Id).ToList();
+            return filePattern.Split(';').SelectMany(pattern => System.IO.Directory.GetFiles(baseDir, pattern, System.IO.SearchOption.AllDirectories)).ToList();
+        }
 
-            var files = System.IO.Directory.EnumerateFiles(baseDir, filePattern, System.IO.SearchOption.AllDirectories);
-            foreach (var file in files)
+        internal static void PrintUnreferenced(string resx, string filePattern, string baseDir)
+        {
+            var entries = fmdev.ResX.ResXFile.Read(resx);
+
+            foreach (var file in GetFiles(filePattern, baseDir))
             {
                 var content = System.IO.File.ReadAllText(file);
                 foreach (var entry in entries.ToList())
@@ -36,8 +39,39 @@ namespace ResXChecker
                 }
             }
 
-            Console.WriteLine($"{entries.Count} Unreferenced entries");
-            entries.ForEach(e => Console.WriteLine(e.Id));
+            Console.WriteLine($"{entries.Count} unreferenced entries");
+            entries.OrderBy(e => e.Id).ToList().ForEach(e => Console.WriteLine(e.Id));
+        }
+
+        internal static void CleanUnreferenced(string resx, string filePattern, string baseDir, bool dryRun)
+        {
+            var entries = fmdev.ResX.ResXFile.Read(resx);
+            var referencedEntries = new List<fmdev.ResX.ResXEntry>();
+
+            foreach (var file in GetFiles(filePattern, baseDir))
+            {
+                var content = System.IO.File.ReadAllText(file);
+                foreach (var entry in entries.ToList())
+                {
+                    if (content.Contains(entry.Id))
+                    {
+                        referencedEntries.Add(entry);
+                        entries.Remove(entry);
+                    }
+                }
+            }
+
+            Console.WriteLine($"Removing {entries.Count} unreferenced entries from {resx}...");
+            //entries.OrderBy(e => e.Id).ToList().ForEach(e => Console.WriteLine(e.Id));
+            if (dryRun)
+            {
+                Console.WriteLine($"dry run (nothing changed)");
+            }
+            else
+            {
+                fmdev.ResX.ResXFile.Write(resx, referencedEntries);
+                Console.WriteLine($"{entries.Count} entries removed, {referencedEntries.Count} written");
+            }
         }
     }
 }

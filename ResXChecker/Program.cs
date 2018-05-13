@@ -13,9 +13,13 @@ namespace ResXChecker
             var parser = new fmdev.ArgsParser.ArgsParser(typeof(CommandArgs));
             if (parser.Parse(args))
             {
-                if (parser.Result is CommandArgs.UnrefCommand)
+                if (parser.Result is CommandArgs.ListCommand)
                 {
-                    PrintUnreferenced(parser.Result as CommandArgs.UnrefCommand);
+                    ListUnreferenced(parser.Result as CommandArgs.ListCommand);
+                }
+                else if (parser.Result is CommandArgs.CleanCommand)
+                {
+                    CleanUnreferenced(parser.Result as CommandArgs.CleanCommand);
                 }
                 else
                 {
@@ -26,7 +30,12 @@ namespace ResXChecker
             return 0;
         }
 
-        private static int PrintUnreferenced(CommandArgs.UnrefCommand cmd)
+        private static void CleanUnreferenced(CommandArgs.CleanCommand cmd)
+        {
+            Checker.CleanUnreferenced(cmd.Resx, cmd.FileTypes, cmd.BaseDir, cmd.DryRun);
+        }
+
+        private static int ListUnreferenced(CommandArgs.ListCommand cmd)
         {
             Checker.PrintUnreferenced(cmd.Resx, cmd.FileTypes, cmd.BaseDir);
 
